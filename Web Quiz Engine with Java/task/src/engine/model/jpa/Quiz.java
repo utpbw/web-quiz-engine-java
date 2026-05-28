@@ -8,7 +8,9 @@ import java.util.List;
  * JPA entity representing a persisted quiz.
  *
  * <p>Options are stored as a child {@link Option} collection ordered by
- * insertion index so GET responses always return options in the original order.</p>
+ * insertion index so GET responses always return options in the original order.
+ * {@code createdBy} holds the email of the registered user who created the quiz,
+ * used to enforce ownership on DELETE.</p>
  */
 @Entity
 @Table(name = "quiz")
@@ -24,51 +26,34 @@ public class Quiz {
     @Column(nullable = false)
     private String text;
 
-    /** Preserves insertion order so the API always returns options in order. */
-    @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    /**
+     * Eagerly loaded to avoid LazyInitializationException outside a transaction.
+     * Ordered by insertion index so API responses always return options in the original order.
+     */
+    @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true,
+               fetch = FetchType.EAGER)
     @JoinColumn(name = "quiz_id", nullable = false)
     @OrderColumn(name = "option_index")
     private List<Option> options = new ArrayList<>();
 
-    public Quiz() {
-    }
+    /** Email of the user who created this quiz; used for ownership checks on DELETE. */
+    @Column(nullable = false)
+    private String createdBy;
 
-    public Quiz(int id, String title, String text, List<Option> options) {
-        this.id = id;
-        this.title = title;
-        this.text = text;
-        this.options = options;
-    }
+    public Quiz() {}
 
-    public int getId() {
-        return id;
-    }
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
 
-    public void setId(int id) {
-        this.id = id;
-    }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    public String getTitle() {
-        return title;
-    }
+    public String getText() { return text; }
+    public void setText(String text) { this.text = text; }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
+    public List<Option> getOptions() { return options; }
+    public void setOptions(List<Option> options) { this.options = options; }
 
-    public String getText() {
-        return text;
-    }
-
-    public void setText(String text) {
-        this.text = text;
-    }
-
-    public List<Option> getOptions() {
-        return options;
-    }
-
-    public void setOptions(List<Option> options) {
-        this.options = options;
-    }
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 }

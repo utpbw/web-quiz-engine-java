@@ -20,33 +20,18 @@ public class Option {
     @Column(name = "option_text")
     private String text;
 
-    @Column(name = "isAnswer")
+    /** {@code true} if this option is one of the correct answers. */
+    @Column(name = "is_answer")
     private boolean answer;
 
-    public Option() {
-    }
+    public Option() {}
 
-    public int getId() {
-        return id;
-    }
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
 
-    public void setId(int id) {
-        this.id = id;
-    }
+    public String getText() { return text; }
+    public void setText(String text) { this.text = text; }
 
-    public String getText() {
-        return text;
-    }
-
-    public void setText(String text) {
-        this.text = text;
-    }
-
-    public boolean getAnswer() {
-        return answer;
-    }
-
-    public void setAnswer(boolean answer) {
-        this.answer = answer;
-    }
+    public boolean getAnswer() { return answer; }
+    public void setAnswer(boolean answer) { this.answer = answer; }
 }

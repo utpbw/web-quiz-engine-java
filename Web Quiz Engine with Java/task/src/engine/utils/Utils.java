@@ -19,11 +19,10 @@ public class Utils {
     private Utils() {}
 
     /**
-     * Validates that every answer index in the DTO is within the bounds of its options list.
+     * Validates that every answer index in the DTO is within bounds of its options list.
      *
-     * <p>Called after Bean Validation passes, so {@code options} is non-null with
-     * at least 2 elements. Any index outside {@code [0, options.size())} triggers 400
-     * via {@link InvalidAnswerException}.</p>
+     * <p>Called after Bean Validation, so {@code options} is non-null with at least 2 elements.
+     * Any index outside {@code [0, options.size())} triggers 400 via {@link InvalidAnswerException}.</p>
      *
      * @param quizDto the quiz DTO whose answer indices to validate
      * @throws InvalidAnswerException if any index is out of range
@@ -41,13 +40,14 @@ public class Utils {
     }
 
     /**
-     * Converts a {@link QuizDto} (request body) to a {@link Quiz} JPA entity.
+     * Converts a {@link QuizDto} to a new {@link Quiz} JPA entity ready for persistence.
      *
-     * <p>Each option string becomes an {@link Option} entity; the {@code answer}
-     * flag is set on options whose index appears in the DTO's answer set.</p>
+     * <p>The {@code id} is intentionally not copied so JPA generates a fresh one.
+     * Each option string becomes an {@link Option} entity; its {@code answer} flag is set
+     * for any option whose index appears in the DTO's answer set.</p>
      *
      * @param quizDto source DTO
-     * @return a new, unpersisted {@link Quiz} entity ready for {@code repository.save()}
+     * @return an unpersisted {@link Quiz} entity
      */
     public static Quiz convertQuizDtoToEntity(QuizDto quizDto) {
         Quiz quiz = new Quiz();
@@ -65,10 +65,10 @@ public class Utils {
     }
 
     /**
-     * Converts a persisted {@link Quiz} entity to a {@link QuizDto} response object.
+     * Converts a persisted {@link Quiz} entity to a {@link QuizDto} for API responses.
      *
-     * <p>The {@code answer} field is intentionally not set here; {@code QuizDto.answer}
-     * is {@code WRITE_ONLY} so it will not appear in JSON responses regardless.</p>
+     * <p>The {@code answer} field is intentionally not set; {@code QuizDto.answer} is
+     * {@code WRITE_ONLY} so it will not appear in JSON responses regardless.</p>
      *
      * @param quizEntity source JPA entity
      * @return a {@link QuizDto} with id, title, text, and option strings

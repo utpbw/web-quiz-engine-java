@@ -1,10 +1,10 @@
 package engine.model.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -39,12 +39,12 @@ public class QuizDto {
     /**
      * Zero-based indices of all correct options.
      * {@code WRITE_ONLY} keeps this out of all JSON responses.
+     * Defaults to an empty set when absent from the request body.
      */
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private Set<Integer> answer = new HashSet<>();
 
-    public QuizDto() {
-    }
+    public QuizDto() {}
 
     public QuizDto(int id, String title, String text, List<String> options, Set<Integer> answer) {
         this.id = id;
@@ -54,43 +54,18 @@ public class QuizDto {
         this.answer = answer;
     }
 
-    public int getId() {
-        return id;
-    }
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
 
-    public void setId(int id) {
-        this.id = id;
-    }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    public String getTitle() {
-        return title;
-    }
+    public String getText() { return text; }
+    public void setText(String text) { this.text = text; }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
+    public List<String> getOptions() { return options; }
+    public void setOptions(List<String> options) { this.options = options; }
 
-    public String getText() {
-        return text;
-    }
-
-    public void setText(String text) {
-        this.text = text;
-    }
-
-    public List<String> getOptions() {
-        return options;
-    }
-
-    public void setOptions(List<String> options) {
-        this.options = options;
-    }
-
-    public Set<Integer> getAnswer() {
-        return answer;
-    }
-
-    public void setAnswer(Set<Integer> answer) {
-        this.answer = answer;
-    }
+    public Set<Integer> getAnswer() { return answer; }
+    public void setAnswer(Set<Integer> answer) { this.answer = answer; }
 }

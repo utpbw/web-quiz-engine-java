@@ -1,44 +1,68 @@
 package engine.controller;
 
 import engine.model.dto.QuizDto;
+import engine.model.dto.RegisterDto;
 import engine.model.dto.ResultDto;
 import engine.service.QuizService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
+import engine.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 
-import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
+import java.security.Principal;
+import java.util.List;
 
 /**
  * REST controller for the quiz engine API.
  *
- * <p>Stage 4 — Moving quizzes to DB: the API is unchanged from stage 3;
- * quizzes are now persisted to an H2 file database and survive server restarts.</p>
+ * <p>Stage 5 — User authorization:
+ * <ul>
+ *   <li>All quiz operations require HTTP Basic Auth (401 otherwise).</li>
+ *   <li>{@code POST /api/register} is public.</li>
+ *   <li>{@code DELETE /api/quizzes/{id}} returns 204 for the owner, 403 for others, 404 if missing.</li>
+ * </ul>
+ * </p>
  */
 @RestController
 public class QuizController {
 
-    private final QuizService service;
+    private final QuizService quizService;
+    private final UserService userService;
 
-    /** @param service quiz service with H2-backed persistence, injected by Spring */
     @Autowired
-    public QuizController(QuizService service) {
-        this.service = service;
+    public QuizController(QuizService quizService, UserService userService) {
+        this.quizService = quizService;
+        this.userService = userService;
     }
 
+    // ── Registration ──────────────────────────────────────────────────────────
+
     /**
-     * Creates a new quiz after validating the request body.
-     * Returns 400 if title/text are blank or options has fewer than 2 entries.
+     * Registers a new user. Returns 400 if the email is already taken or the
+     * email/password format is invalid.
      *
-     * @param quizDto validated quiz from the JSON request body
+     * @param dto registration request body with email and password
+     */
+    @PostMapping("/api/register")
+    public void register(@Valid @RequestBody RegisterDto dto) {
+        userService.register(dto);
+    }
+
+    // ── Quiz CRUD ─────────────────────────────────────────────────────────────
+
+    /**
+     * Creates a new quiz owned by the currently authenticated user.
+     * Returns 400 if the request body fails validation.
+     *
+     * @param quizDto   validated quiz from the JSON request body
+     * @param principal injected by Spring Security from the Basic Auth credentials
      * @return the stored quiz DTO with its generated {@code id}
      */
     @PostMapping(value = "/api/quizzes", consumes = "application/json")
-    public QuizDto createQuiz(@Valid @NotNull @RequestBody QuizDto quizDto) {
-        return service.addQuizToStorage(quizDto);
+    public QuizDto createQuiz(@Valid @NotNull @RequestBody QuizDto quizDto, Principal principal) {
+        return quizService.addQuizToStorage(quizDto, principal.getName());
     }
 
     /**
@@ -47,9 +71,9 @@ public class QuizController {
      * @param id quiz identifier
      * @return the matching quiz DTO
      */
-    @GetMapping(path = "/api/quizzes/{id}")
+    @GetMapping("/api/quizzes/{id}")
     public QuizDto getQuiz(@PathVariable int id) {
-        return service.getQuizById(id);
+        return quizService.getQuizById(id);
     }
 
     /**
@@ -57,22 +81,36 @@ public class QuizController {
      *
      * @return list of all quiz DTOs
      */
-    @GetMapping(path = "/api/quizzes")
+    @GetMapping("/api/quizzes")
     public List<QuizDto> getAllQuizzes() {
-        return service.getAllQuizzesFromStorage();
+        return quizService.getAllQuizzesFromStorage();
     }
 
     /**
+     * Deletes a quiz created by the authenticated user.
+     * Returns 204 on success, 404 if not found, 403 if not the owner.
+     *
+     * @param id        quiz identifier
+     * @param principal injected by Spring Security
+     */
+    @DeleteMapping("/api/quizzes/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteQuiz(@PathVariable int id, Principal principal) {
+        quizService.deleteQuiz(id, principal.getName());
+    }
+
+    // ── Solve ─────────────────────────────────────────────────────────────────
+
+    /**
      * Evaluates the submitted answer set for the given quiz.
-     * The request body must be {@code {"answer": [index, ...]}}; send {@code []}
-     * when guessing that no options are correct.
+     * Send {@code {"answer": []}} when guessing that no option is correct.
      *
      * @param id     quiz identifier
      * @param answer QuizDto whose {@code answer} set carries the submitted indices
-     * @return success/failure result DTO with feedback message
+     * @return success/failure result DTO with feedback
      */
-    @PostMapping(path = "/api/quizzes/{id}/solve", produces = APPLICATION_JSON_VALUE)
+    @PostMapping("/api/quizzes/{id}/solve")
     public ResultDto solveQuiz(@PathVariable int id, @RequestBody QuizDto answer) {
-        return service.solveQuizById(id, answer.getAnswer());
+        return quizService.solveQuizById(id, answer.getAnswer());
     }
 }

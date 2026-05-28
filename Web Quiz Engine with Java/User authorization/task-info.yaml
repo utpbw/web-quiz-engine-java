@@ -41,6 +41,24 @@ files:
     learner_created: false
   - name: test/tests/WebQuizEngineTest.java
     learner_created: false
+  - name: src/engine/model/Result.java
+    visible: true
+    learner_created: true
+  - name: src/engine/model/Quiz.java
+    visible: true
+    learner_created: true
+  - name: src/engine/model/dto/RegisterDto.java
+    visible: true
+    learner_created: true
+  - name: src/engine/model/jpa/User.java
+    visible: true
+    learner_created: true
+  - name: src/engine/service/UserService.java
+    visible: true
+    learner_created: true
+  - name: src/engine/repository/UserRepository.java
+    visible: true
+    learner_created: true
 feedback_link: https://hyperskill.org/projects/91/stages/508/implement#comment
 status: Unchecked
 record: -1
