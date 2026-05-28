@@ -1,80 +1,80 @@
 package engine.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
- * Represents a single quiz question with multiple-choice options.
+ * Represents a quiz question stored in the engine.
  *
- * <p>Instances are serialized to JSON by Jackson when returned from
- * REST endpoints, so every field needs a public getter.</p>
+ * <p>The {@code answer} field is accepted on input (POST body) but never
+ * returned in responses, preventing clients from reading the correct answer.</p>
  */
 public class Quiz {
+
+    /** Auto-assigned unique identifier; not accepted from client input. */
+    private int id;
     private String title;
     private String text;
     private String[] options;
 
     /**
-     * Constructs a new quiz question.
-     *
-     * @param title   short display name for the quiz
-     * @param text    the question body shown to the user
-     * @param options array of answer choices (must contain at least one entry)
+     * Zero-based index of the correct option.
+     * {@code WRITE_ONLY} keeps it out of all JSON responses.
      */
-    public Quiz(String title, String text, String[] options) {
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private int answer;
+
+    /** Required by Jackson for deserialization. */
+    public Quiz() {}
+
+    /**
+     * Constructs a quiz with all fields (used internally).
+     *
+     * @param id      unique identifier
+     * @param title   short display name
+     * @param text    question body
+     * @param options answer choices
+     * @param answer  zero-based index of the correct option
+     */
+    public Quiz(int id, String title, String text, String[] options, int answer) {
+        this.id = id;
         this.title = title;
         this.text = text;
         this.options = options;
+        this.answer = answer;
     }
 
-    /**
-     * Returns the quiz title.
-     *
-     * @return non-null title string
-     */
-    public String getTitle() {
-        return title;
-    }
+    /** @return unique quiz identifier */
+    public int getId() { return id; }
+
+    /** @param id assigned by {@link engine.service.QuizService} on creation */
+    public void setId(int id) { this.id = id; }
+
+    /** @return quiz title; may be {@code null} if not provided by client */
+    public String getTitle() { return title; }
+
+    /** @param title short display name */
+    public void setTitle(String title) { this.title = title; }
+
+    /** @return question text; may be {@code null} if not provided by client */
+    public String getText() { return text; }
+
+    /** @param text question body */
+    public void setText(String text) { this.text = text; }
+
+    /** @return answer option array; may be {@code null} if not provided by client */
+    public String[] getOptions() { return options; }
+
+    /** @param options array of answer choices */
+    public void setOptions(String[] options) { this.options = options; }
 
     /**
-     * Returns the question text.
+     * Returns the zero-based index of the correct answer.
+     * Not serialized to JSON ({@code WRITE_ONLY}).
      *
-     * @return non-null question body
+     * @return correct option index
      */
-    public String getText() {
-        return text;
-    }
+    public int getAnswer() { return answer; }
 
-    /**
-     * Returns the answer options array.
-     *
-     * @return array of option strings; never {@code null}
-     */
-    public String[] getOptions() {
-        return options;
-    }
-
-    /**
-     * Sets the quiz title.
-     *
-     * @param title new title; must not be blank
-     */
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    /**
-     * Sets the question text.
-     *
-     * @param text new question body; must not be blank
-     */
-    public void setText(String text) {
-        this.text = text;
-    }
-
-    /**
-     * Replaces the answer options.
-     *
-     * @param options new array of option strings
-     */
-    public void setOptions(String[] options) {
-        this.options = options;
-    }
+    /** @param answer zero-based index of the correct option */
+    public void setAnswer(int answer) { this.answer = answer; }
 }

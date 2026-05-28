@@ -2,46 +2,72 @@ package engine.controller;
 
 import engine.model.Quiz;
 import engine.model.Result;
+import engine.service.QuizService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
- * REST controller exposing the single hardcoded quiz at {@code /api/quiz}.
+ * REST controller for the quiz engine API.
  *
- * <p>Stage 1 — Solving a simple quiz: one fixed question, answer index 2
- * (zero-based) is the correct option ("Cup of coffee").</p>
+ * <p>Stage 2 — Lots of quizzes: quizzes are stored in memory and identified
+ * by an auto-incremented integer ID.</p>
  */
 @RestController
 public class QuizController {
 
-    /** The single quiz served by this stage of the engine. */
-    private final Quiz quiz = new Quiz(
-            "The Java Logo",
-            "What is depicted on the Java logo?",
-            new String[]{"Robot", "Tea leaf", "Cup of coffee", "Bug"}
-    );
+    private final QuizService service;
 
     /**
-     * Returns the current quiz question with its answer options.
-     *
-     * @return the quiz; never {@code null}
+     * @param service in-memory quiz store, injected by Spring
      */
-    @GetMapping(path = "/api/quiz")
-    public Quiz getQuiz() {
-        return quiz;
+    @Autowired
+    public QuizController(QuizService service) {
+        this.service = service;
     }
 
     /**
-     * Evaluates the submitted answer index and returns a result.
+     * Creates a new quiz from the JSON request body.
      *
-     * @param answer zero-based index of the chosen option
-     * @return {@link Result#success()} if {@code answer == 2}, otherwise {@link Result#wrong()}
+     * @param quiz deserialized quiz (answer field accepted but not returned)
+     * @return the stored quiz with its generated {@code id}
      */
-    @PostMapping(path = "/api/quiz")
-    public Result solveQuiz(@RequestParam int answer) {
-        if (answer == 2) {
-            return Result.success();
-        } else {
-            return Result.wrong();
-        }
+    @PostMapping(value = "/api/quizzes", consumes = "application/json")
+    public Quiz createQuiz(@RequestBody Quiz quiz) {
+        return service.addQuizToStorage(quiz);
+    }
+
+    /**
+     * Returns a single quiz by ID without the answer field.
+     *
+     * @param id quiz identifier
+     * @return the matching quiz
+     */
+    @GetMapping(path = "/api/quizzes/{id}")
+    public Quiz getQuiz(@PathVariable int id) {
+        return service.getQuizById(id);
+    }
+
+    /**
+     * Returns all quizzes currently stored; empty array when none exist.
+     *
+     * @return list of all quizzes
+     */
+    @GetMapping(path = "/api/quizzes")
+    public List<Quiz> getAllQuizzes() {
+        return service.getAllQuizzesFromStorage();
+    }
+
+    /**
+     * Evaluates the submitted answer for the given quiz.
+     *
+     * @param id     quiz identifier
+     * @param answer zero-based index of the chosen option (request param)
+     * @return success/failure result with feedback message
+     */
+    @PostMapping(path = "/api/quizzes/{id}/solve")
+    public Result solveQuiz(@PathVariable int id, @RequestParam int answer) {
+        return service.solveQuizById(id, answer);
     }
 }
