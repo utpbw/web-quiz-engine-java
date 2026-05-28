@@ -1,35 +1,44 @@
 package engine.service;
 
 import engine.exception.QuizNotFoundException;
+import engine.model.dto.CompletionDto;
 import engine.model.dto.QuizDto;
 import engine.model.dto.ResultDto;
 import engine.model.jpa.Quiz;
+import engine.model.jpa.QuizCompletion;
+import engine.repository.CompletionRepository;
 import engine.repository.QuizRepository;
 import engine.utils.Utils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.Set;
 
 /**
- * Service layer bridging the REST API and the JPA repository.
+ * Service layer bridging the REST API and the JPA repositories.
  *
- * <p>Converts between {@link QuizDto} (API contract) and {@link Quiz} (JPA entity),
- * delegating persistence to {@link QuizRepository}. Quiz creation records the creator's
- * email for ownership enforcement on deletion.</p>
+ * <p>Converts between DTOs (API contract) and JPA entities, delegates
+ * persistence to {@link QuizRepository} and {@link CompletionRepository},
+ * and enforces quiz ownership on deletion.</p>
  */
 @Service
 public class QuizService {
 
+    private static final int PAGE_SIZE = 10;
+
     private final QuizRepository quizRepository;
+    private final CompletionRepository completionRepository;
 
     @Autowired
-    public QuizService(QuizRepository quizRepository) {
+    public QuizService(QuizRepository quizRepository, CompletionRepository completionRepository) {
         this.quizRepository = quizRepository;
+        this.completionRepository = completionRepository;
     }
 
     /**
@@ -49,16 +58,15 @@ public class QuizService {
     }
 
     /**
-     * Returns all stored quizzes as DTOs (answer field excluded from JSON).
+     * Returns a page of all stored quizzes (10 per page).
      *
-     * @return list of all quizzes; empty when none have been created
+     * @param page zero-based page number
+     * @return a Spring Data {@link Page} of quiz DTOs
      */
-    public List<QuizDto> getAllQuizzesFromStorage() {
-        List<QuizDto> result = new ArrayList<>();
-        for (Quiz each : quizRepository.findAll()) {
-            result.add(Utils.convertEntityToQuizDto(each));
-        }
-        return result;
+    public Page<QuizDto> getAllQuizzesFromStorage(int page) {
+        Pageable pageable = PageRequest.of(page, PAGE_SIZE);
+        return quizRepository.findAll(pageable)
+            .map(Utils::convertEntityToQuizDto);
     }
 
     /**
@@ -77,8 +85,8 @@ public class QuizService {
      *
      * @param id    quiz identifier
      * @param email email of the authenticated user requesting deletion
-     * @throws QuizNotFoundException     if no quiz with the given ID exists (404)
-     * @throws ResponseStatusException   403 if the user is not the creator
+     * @throws QuizNotFoundException   if no quiz with the given ID exists (404)
+     * @throws ResponseStatusException 403 if the user is not the creator
      */
     public void deleteQuiz(int id, String email) {
         Quiz quiz = findById(id);
@@ -89,19 +97,40 @@ public class QuizService {
     }
 
     /**
-     * Evaluates the submitted answer set against the stored correct answers.
+     * Evaluates the submitted answer set. If correct, records a completion.
      *
-     * <p>Comparison is set-based: order does not matter.</p>
-     *
-     * @param id     quiz identifier
-     * @param answer set of submitted option indices
-     * @return {@link ResultDto#success()} if sets match, {@link ResultDto#wrong()} otherwise
+     * @param id        quiz identifier
+     * @param answer    set of submitted option indices
+     * @param userEmail email of the authenticated user
+     * @return {@link ResultDto#success()} if correct, {@link ResultDto#wrong()} otherwise
      * @throws QuizNotFoundException if no quiz with the given ID exists
      */
-    public ResultDto solveQuizById(int id, Set<Integer> answer) {
+    public ResultDto solveQuizById(int id, Set<Integer> answer, String userEmail) {
         Quiz quiz = findById(id);
         Set<Integer> correct = Utils.getIndexOfAnswer(quiz.getOptions());
-        return correct.equals(answer) ? ResultDto.success() : ResultDto.wrong();
+        boolean success = correct.equals(answer);
+        if (success) {
+            QuizCompletion completion = new QuizCompletion();
+            completion.setUserEmail(userEmail);
+            completion.setQuizId(id);
+            completion.setCompletedAt(LocalDateTime.now());
+            completionRepository.save(completion);
+        }
+        return success ? ResultDto.success() : ResultDto.wrong();
+    }
+
+    /**
+     * Returns a page of quiz completions for the given user, newest first (10 per page).
+     *
+     * @param userEmail authenticated user's email
+     * @param page      zero-based page number
+     * @return a Spring Data {@link Page} of completion DTOs
+     */
+    public Page<CompletionDto> getCompletedQuizzes(String userEmail, int page) {
+        Pageable pageable = PageRequest.of(page, PAGE_SIZE);
+        return completionRepository
+            .findByUserEmailOrderByCompletedAtDesc(userEmail, pageable)
+            .map(c -> new CompletionDto(c.getQuizId(), c.getCompletedAt()));
     }
 
     /**

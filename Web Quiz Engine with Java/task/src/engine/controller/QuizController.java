@@ -1,5 +1,6 @@
 package engine.controller;
 
+import engine.model.dto.CompletionDto;
 import engine.model.dto.QuizDto;
 import engine.model.dto.RegisterDto;
 import engine.model.dto.ResultDto;
@@ -8,20 +9,21 @@ import engine.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
-import java.util.List;
 
 /**
  * REST controller for the quiz engine API.
  *
- * <p>Stage 5 — User authorization:
+ * <p>Stage 6 — Advanced queries:
  * <ul>
- *   <li>All quiz operations require HTTP Basic Auth (401 otherwise).</li>
- *   <li>{@code POST /api/register} is public.</li>
- *   <li>{@code DELETE /api/quizzes/{id}} returns 204 for the owner, 403 for others, 404 if missing.</li>
+ *   <li>{@code GET /api/quizzes?page=n} returns a paginated {@link Page} of quizzes (10 per page).</li>
+ *   <li>{@code GET /api/quizzes/completed?page=n} returns the authenticated user's completions,
+ *       newest first, as a paginated {@link Page}.</li>
+ *   <li>Correct quiz answers now record a {@link engine.model.jpa.QuizCompletion}.</li>
  * </ul>
  * </p>
  */
@@ -54,10 +56,9 @@ public class QuizController {
 
     /**
      * Creates a new quiz owned by the currently authenticated user.
-     * Returns 400 if the request body fails validation.
      *
      * @param quizDto   validated quiz from the JSON request body
-     * @param principal injected by Spring Security from the Basic Auth credentials
+     * @param principal injected by Spring Security
      * @return the stored quiz DTO with its generated {@code id}
      */
     @PostMapping(value = "/api/quizzes", consumes = "application/json")
@@ -77,13 +78,28 @@ public class QuizController {
     }
 
     /**
-     * Returns all quizzes currently stored; empty array when none exist.
+     * Returns a page of all quizzes (10 per page).
      *
-     * @return list of all quiz DTOs
+     * @param page zero-based page number (default 0)
+     * @return a Spring Data page of quiz DTOs
      */
     @GetMapping("/api/quizzes")
-    public List<QuizDto> getAllQuizzes() {
-        return quizService.getAllQuizzesFromStorage();
+    public Page<QuizDto> getAllQuizzes(@RequestParam(defaultValue = "0") int page) {
+        return quizService.getAllQuizzesFromStorage(page);
+    }
+
+    /**
+     * Returns a page of the authenticated user's successful completions, newest first.
+     *
+     * @param page      zero-based page number (default 0)
+     * @param principal injected by Spring Security
+     * @return a Spring Data page of completion DTOs
+     */
+    @GetMapping("/api/quizzes/completed")
+    public Page<CompletionDto> getCompletedQuizzes(
+            @RequestParam(defaultValue = "0") int page,
+            Principal principal) {
+        return quizService.getCompletedQuizzes(principal.getName(), page);
     }
 
     /**
@@ -102,15 +118,17 @@ public class QuizController {
     // ── Solve ─────────────────────────────────────────────────────────────────
 
     /**
-     * Evaluates the submitted answer set for the given quiz.
-     * Send {@code {"answer": []}} when guessing that no option is correct.
+     * Evaluates the submitted answer set. Records a completion if correct.
      *
-     * @param id     quiz identifier
-     * @param answer QuizDto whose {@code answer} set carries the submitted indices
+     * @param id        quiz identifier
+     * @param answer    QuizDto whose {@code answer} set carries the submitted indices
+     * @param principal injected by Spring Security
      * @return success/failure result DTO with feedback
      */
     @PostMapping("/api/quizzes/{id}/solve")
-    public ResultDto solveQuiz(@PathVariable int id, @RequestBody QuizDto answer) {
-        return quizService.solveQuizById(id, answer.getAnswer());
+    public ResultDto solveQuiz(@PathVariable int id,
+                               @RequestBody QuizDto answer,
+                               Principal principal) {
+        return quizService.solveQuizById(id, answer.getAnswer(), principal.getName());
     }
 }
