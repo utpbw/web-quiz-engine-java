@@ -2,40 +2,51 @@ package engine.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * Represents a quiz question stored in the engine.
  *
- * <p>The {@code answer} field is accepted on input (POST body) but never
- * returned in responses, preventing clients from reading the correct answer.</p>
+ * <p>Bean Validation annotations enforce the creation contract:
+ * title and text must be non-blank, options must have at least 2 entries.
+ * The {@code answer} set is accepted on input but never returned in responses.</p>
  */
 public class Quiz {
 
     /** Auto-assigned unique identifier; not accepted from client input. */
     private int id;
+
+    /** Required; must not be blank. */
+    @NotEmpty(message = "Quiz title must not be empty")
+    @NotNull(message = "Quiz title must not be null")
     private String title;
+
+    /** Required; must not be blank. */
+    @NotEmpty(message = "Quiz text must not be empty")
+    @NotNull(message = "Quiz text must not be null")
     private String text;
+
+    /** Required; must contain at least 2 options. */
+    @Size(min = 2, message = "Quiz must have at least 2 options")
     private String[] options;
 
     /**
-     * Zero-based index of the correct option.
-     * {@code WRITE_ONLY} keeps it out of all JSON responses.
+     * Zero-based indices of all correct options.
+     * {@code WRITE_ONLY} keeps this out of all JSON responses.
+     * Defaults to an empty set when absent from the request body.
      */
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    private int answer;
+    private Set<Integer> answer = new HashSet<>();
 
     /** Required by Jackson for deserialization. */
-    public Quiz() {}
+    public Quiz() {
+    }
 
-    /**
-     * Constructs a quiz with all fields (used internally).
-     *
-     * @param id      unique identifier
-     * @param title   short display name
-     * @param text    question body
-     * @param options answer choices
-     * @param answer  zero-based index of the correct option
-     */
-    public Quiz(int id, String title, String text, String[] options, int answer) {
+    public Quiz(int id, String title, String text, String[] options, Set<Integer> answer) {
         this.id = id;
         this.title = title;
         this.text = text;
@@ -43,38 +54,43 @@ public class Quiz {
         this.answer = answer;
     }
 
-    /** @return unique quiz identifier */
-    public int getId() { return id; }
+    public int getId() {
+        return id;
+    }
 
-    /** @param id assigned by {@link engine.service.QuizService} on creation */
-    public void setId(int id) { this.id = id; }
+    public void setId(int id) {
+        this.id = id;
+    }
 
-    /** @return quiz title; may be {@code null} if not provided by client */
-    public String getTitle() { return title; }
+    public String getTitle() {
+        return title;
+    }
 
-    /** @param title short display name */
-    public void setTitle(String title) { this.title = title; }
+    public void setTitle(String title) {
+        this.title = title;
+    }
 
-    /** @return question text; may be {@code null} if not provided by client */
-    public String getText() { return text; }
+    public String getText() {
+        return text;
+    }
 
-    /** @param text question body */
-    public void setText(String text) { this.text = text; }
+    public void setText(String text) {
+        this.text = text;
+    }
 
-    /** @return answer option array; may be {@code null} if not provided by client */
-    public String[] getOptions() { return options; }
+    public String[] getOptions() {
+        return options;
+    }
 
-    /** @param options array of answer choices */
-    public void setOptions(String[] options) { this.options = options; }
+    public void setOptions(String[] options) {
+        this.options = options;
+    }
 
-    /**
-     * Returns the zero-based index of the correct answer.
-     * Not serialized to JSON ({@code WRITE_ONLY}).
-     *
-     * @return correct option index
-     */
-    public int getAnswer() { return answer; }
+    public Set<Integer> getAnswer() {
+        return answer;
+    }
 
-    /** @param answer zero-based index of the correct option */
-    public void setAnswer(int answer) { this.answer = answer; }
+    public void setAnswer(Set<Integer> answer) {
+        this.answer = answer;
+    }
 }

@@ -3,11 +3,13 @@ package engine.service;
 import engine.exception.QuizNotFoundException;
 import engine.model.Quiz;
 import engine.model.Result;
+import engine.utils.Utils;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -24,12 +26,13 @@ public class QuizService {
     private final AtomicInteger idGenerator = new AtomicInteger();
 
     /**
-     * Persists a new quiz, assigning it a unique ID.
+     * Validates answer indices, assigns an ID, and persists the quiz.
      *
-     * @param quiz the quiz to store; its {@code id} field is set by this method
-     * @return the same quiz instance with its ID populated
+     * @param quiz the validated quiz to store
+     * @return the same quiz with its ID populated
      */
     public Quiz addQuizToStorage(Quiz quiz) {
+        Utils.checkAnswerOptions(quiz);
         int id = idGenerator.incrementAndGet();
         quiz.setId(id);
         storage.put(id, quiz);
@@ -61,15 +64,17 @@ public class QuizService {
     }
 
     /**
-     * Evaluates the submitted answer for the specified quiz.
+     * Evaluates the submitted answer set for the specified quiz.
+     *
+     * <p>Comparison is set-based: order does not matter.</p>
      *
      * @param id     quiz identifier
-     * @param answer zero-based index of the chosen option
-     * @return {@link Result#success()} if correct, {@link Result#wrong()} otherwise
+     * @param answer set of submitted option indices
+     * @return {@link Result#success()} if the sets match, {@link Result#wrong()} otherwise
      * @throws QuizNotFoundException if no quiz with the given ID exists
      */
-    public Result solveQuizById(int id, int answer) {
+    public Result solveQuizById(int id, Set<Integer> answer) {
         Quiz quiz = getQuizById(id);
-        return quiz.getAnswer() == answer ? Result.success() : Result.wrong();
+        return quiz.getAnswer().equals(answer) ? Result.success() : Result.wrong();
     }
 }
