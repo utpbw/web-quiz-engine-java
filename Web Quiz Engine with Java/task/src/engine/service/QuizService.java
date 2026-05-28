@@ -1,80 +1,98 @@
 package engine.service;
 
 import engine.exception.QuizNotFoundException;
-import engine.model.Quiz;
-import engine.model.Result;
+import engine.model.dto.QuizDto;
+import engine.model.dto.ResultDto;
+import engine.model.jpa.Quiz;
+import engine.repository.QuizRepository;
 import engine.utils.Utils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * In-memory store for quiz instances.
+ * Service layer bridging the REST API and the JPA repository.
  *
- * <p>Thread-safe: uses {@link ConcurrentHashMap} and an {@link AtomicInteger}
- * ID counter so concurrent requests never collide.</p>
+ * <p>Converts between {@link QuizDto} (API contract) and {@link Quiz} (JPA entity),
+ * delegating persistence to {@link QuizRepository}.</p>
  */
 @Service
 public class QuizService {
 
-    private final Map<Integer, Quiz> storage = new ConcurrentHashMap<>();
-    private final AtomicInteger idGenerator = new AtomicInteger();
+    private final QuizRepository quizRepository;
 
-    /**
-     * Validates answer indices, assigns an ID, and persists the quiz.
-     *
-     * @param quiz the validated quiz to store
-     * @return the same quiz with its ID populated
-     */
-    public Quiz addQuizToStorage(Quiz quiz) {
-        Utils.checkAnswerOptions(quiz);
-        int id = idGenerator.incrementAndGet();
-        quiz.setId(id);
-        storage.put(id, quiz);
-        return quiz;
+    /** @param quizRepository H2-backed repository, injected by Spring */
+    @Autowired
+    public QuizService(QuizRepository quizRepository) {
+        this.quizRepository = quizRepository;
     }
 
     /**
-     * Returns all quizzes currently in the store.
+     * Validates answer indices, converts to entity, persists, and returns the DTO with its new ID.
      *
-     * @return snapshot list; empty when no quizzes have been created
+     * @param quizDto validated quiz from the request body
+     * @return the same DTO with its server-assigned {@code id} populated
      */
-    public List<Quiz> getAllQuizzesFromStorage() {
-        return new ArrayList<>(storage.values());
+    public QuizDto addQuizToStorage(QuizDto quizDto) {
+        Utils.checkAnswerOptions(quizDto);
+        Quiz quizEntity = Utils.convertQuizDtoToEntity(quizDto);
+        int id = quizRepository.save(quizEntity).getId();
+        quizDto.setId(id);
+        return quizDto;
     }
 
     /**
-     * Retrieves a quiz by its ID.
+     * Returns all stored quizzes as DTOs (answer field excluded from JSON).
+     *
+     * @return list of all quizzes; empty when none have been created
+     */
+    public List<QuizDto> getAllQuizzesFromStorage() {
+        List<QuizDto> quizzesDto = new ArrayList<>();
+        for (Quiz each : quizRepository.findAll()) {
+            quizzesDto.add(Utils.convertEntityToQuizDto(each));
+        }
+        return quizzesDto;
+    }
+
+    /**
+     * Returns a single quiz DTO by ID.
      *
      * @param id quiz identifier
-     * @return the matching quiz
+     * @return the matching quiz DTO
      * @throws QuizNotFoundException if no quiz with the given ID exists
      */
-    public Quiz getQuizById(int id) {
-        Quiz quiz = storage.get(id);
-        if (quiz == null) {
-            throw new QuizNotFoundException();
-        }
-        return quiz;
+    public QuizDto getQuizById(int id) {
+        return Utils.convertEntityToQuizDto(findById(id));
     }
 
     /**
-     * Evaluates the submitted answer set for the specified quiz.
+     * Loads the JPA entity by ID, throwing 404 if absent.
+     *
+     * @param id quiz identifier
+     * @return the JPA entity
+     * @throws QuizNotFoundException if not found
+     */
+    public Quiz findById(int id) {
+        return quizRepository.findById(id)
+            .orElseThrow(QuizNotFoundException::new);
+    }
+
+    /**
+     * Evaluates the submitted answer set against the stored correct answers.
      *
      * <p>Comparison is set-based: order does not matter.</p>
      *
      * @param id     quiz identifier
      * @param answer set of submitted option indices
-     * @return {@link Result#success()} if the sets match, {@link Result#wrong()} otherwise
+     * @return {@link ResultDto#success()} if the sets match, {@link ResultDto#wrong()} otherwise
      * @throws QuizNotFoundException if no quiz with the given ID exists
      */
-    public Result solveQuizById(int id, Set<Integer> answer) {
-        Quiz quiz = getQuizById(id);
-        return quiz.getAnswer().equals(answer) ? Result.success() : Result.wrong();
+    public ResultDto solveQuizById(int id, Set<Integer> answer) {
+        Quiz quizEntity = findById(id);
+        Set<Integer> correctAnswer = Utils.getIndexOfAnswer(quizEntity.getOptions());
+        return correctAnswer.equals(answer) ? ResultDto.success() : ResultDto.wrong();
     }
 }

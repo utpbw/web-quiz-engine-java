@@ -3,3 +3,5 @@ build/
 .idea/
 *.class
 .claude/
+*.mv.db
+*.trace.db

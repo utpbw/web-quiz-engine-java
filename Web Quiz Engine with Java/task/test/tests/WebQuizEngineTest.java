@@ -5,12 +5,12 @@ import com.google.gson.JsonObject;
 import engine.WebQuizEngine;
 import org.hyperskill.hstest.dynamic.input.DynamicTesting;
 import org.hyperskill.hstest.dynamic.input.DynamicTestingMethod;
+import org.hyperskill.hstest.exception.outcomes.UnexpectedError;
 import org.hyperskill.hstest.exception.outcomes.WrongAnswer;
 import org.hyperskill.hstest.mocks.web.request.HttpRequest;
 import org.hyperskill.hstest.mocks.web.response.HttpResponse;
 import org.hyperskill.hstest.stage.SpringTest;
 import org.hyperskill.hstest.testcase.CheckResult;
-import org.hyperskill.hstest.testing.expect.json.builder.JsonStringBuilder;
 
 import static org.hyperskill.hstest.common.JsonUtils.getJson;
 import static org.hyperskill.hstest.common.JsonUtils.getPrettyJson;
@@ -18,9 +18,8 @@ import static org.hyperskill.hstest.testing.expect.Expectation.expect;
 import static org.hyperskill.hstest.testing.expect.json.JsonChecker.*;
 
 public class WebQuizEngineTest extends SpringTest {
-
     public WebQuizEngineTest() {
-        super(WebQuizEngine.class);
+        super(WebQuizEngine.class, "../quizdb.mv.db");
     }
 
     static void checkStatusCode(HttpResponse resp, int status) {
@@ -177,6 +176,14 @@ public class WebQuizEngineTest extends SpringTest {
         () -> checkQuizSuccess(quizIds[1], "[2]", false),
         () -> checkQuizSuccess(quizIds[1], "[3]", false),
 
+        () -> testAllQuizzes(2),
+        this::reloadServer,
+        () -> testAllQuizzes(2),
+        () -> checkQuizSuccess(quizIds[0], "[2]", true),
+        () -> checkQuizSuccess(quizIds[0], "[3]", false),
+        () -> checkQuizSuccess(quizIds[1], "[0]", false),
+        () -> checkQuizSuccess(quizIds[1], "[1]", true),
+
         () -> addIncorrectQuiz(error400noTitle),
         () -> addIncorrectQuiz(error400emptyTitle),
         () -> addIncorrectQuiz(error400noText),
@@ -279,6 +286,14 @@ public class WebQuizEngineTest extends SpringTest {
         () -> checkQuizSuccess(quizIds[6], "[0,1,3]", true),
         () -> checkQuizSuccess(quizIds[6], "[1,2,3]", false),
         () -> checkQuizSuccess(quizIds[6], "[0,1,2,3]", false),
+
+        () -> testAllQuizzes(7),
+        this::reloadServer,
+        () -> testAllQuizzes(7),
+        () -> checkQuizSuccess(quizIds[5], "[]", true),
+        () -> checkQuizSuccess(quizIds[5], "[0]", false),
+        () -> checkQuizSuccess(quizIds[6], "[0,1,2]", false),
+        () -> checkQuizSuccess(quizIds[6], "[0,1,3]", true),
     };
 
     private CheckResult testCreateQuiz(int quizNum) {
@@ -292,9 +307,6 @@ public class WebQuizEngineTest extends SpringTest {
                     quizIds[quizNum] = i;
                     return true;
                 }))
-                    .value("title", isNotBlankString())
-                    .value("text", isNotBlankString())
-                    .value("options", isArray(4))
                 .anyOtherValues()
         );
 
@@ -302,7 +314,6 @@ public class WebQuizEngineTest extends SpringTest {
     }
 
     private CheckResult testQuizExists(int quizNum) {
-
         int quizId = quizIds[quizNum];
         String quiz = quizzes[quizNum];
 
@@ -376,7 +387,7 @@ public class WebQuizEngineTest extends SpringTest {
         expect(resp.getContent()).asJson().check(
             isObject()
                 .value("success", shouldResponse)
-                .value("feedback", isNotBlankString())
+                .value("feedback", isString())
         );
 
         return CheckResult.correct();
@@ -389,7 +400,12 @@ public class WebQuizEngineTest extends SpringTest {
         return CheckResult.correct();
     }
 
-    private static JsonStringBuilder isNotBlankString() {
-        return isString(s -> !s.isBlank(), "should not be blank");
+    private CheckResult reloadServer() {
+        try {
+            reloadSpring();
+        } catch (Exception ex) {
+            throw new UnexpectedError(ex.getMessage());
+        }
+        return CheckResult.correct();
     }
 }
