@@ -1,0 +1,46 @@
+type: edu
+files:
+  - name: build.gradle
+    visible: true
+    learner_created: false
+  - name: src/engine/WebQuizEngine.java
+    visible: true
+    learner_created: false
+  - name: src/resources/application.properties
+    visible: true
+    learner_created: false
+  - name: src/engine/service/QuizService.java
+    visible: true
+    learner_created: false
+  - name: src/engine/exception/InvalidAnswerException.java
+    visible: true
+    learner_created: false
+  - name: src/engine/utils/Utils.java
+    visible: true
+    learner_created: false
+  - name: src/engine/exception/QuizNotFoundException.java
+    visible: true
+    learner_created: false
+  - name: src/engine/controller/QuizController.java
+    visible: true
+    learner_created: false
+  - name: src/engine/model/dto/QuizDto.java
+    visible: true
+    learner_created: false
+  - name: src/engine/model/dto/ResultDto.java
+    visible: true
+    learner_created: false
+  - name: src/engine/model/jpa/Option.java
+    visible: true
+    learner_created: false
+  - name: src/engine/model/jpa/Quiz.java
+    visible: true
+    learner_created: false
+  - name: src/engine/repository/QuizRepository.java
+    visible: true
+    learner_created: false
+  - name: test/tests/WebQuizEngineTest.java
+    learner_created: false
+feedback_link: https://hyperskill.org/projects/91/stages/508/implement#comment
+status: Unchecked
+record: -1
