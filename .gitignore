@@ -1,27 +1,30 @@
-# Build output
+# ── Build output ────────────────────────────────────────────────────────────
 .gradle/
 build/
 *.class
 
-# IDE
+# ── IDE ─────────────────────────────────────────────────────────────────────
 .idea/
 
-# Hyperskill course/task metadata (not source code)
-course-info.yaml
-course-remote-info.yaml
-**/lesson-info.yaml
-**/task-info.yaml
-**/task-remote-info.yaml
-**/task.html
+# ── Hyperskill infrastructure (root-level only; task/build.gradle is kept) ──
+/build.gradle
+/settings.gradle
 
-# Gradle wrapper binaries
+# ── All YAML / YML config and metadata ──────────────────────────────────────
+*.yaml
+*.yml
+
+# ── Gradle wrapper binaries ──────────────────────────────────────────────────
 gradlew
 gradlew.bat
 gradle/
 
-# H2 database files
+# ── Hyperskill task HTML descriptions ────────────────────────────────────────
+**/*.html
+
+# ── H2 database files ────────────────────────────────────────────────────────
 *.mv.db
 *.trace.db
 
-# Claude Code tooling
+# ── Claude Code tooling ──────────────────────────────────────────────────────
 .claude/
